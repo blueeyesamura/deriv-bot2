@@ -229,7 +229,8 @@ input:focus,select:focus{border-color:#4299e1;}
 <script>
 const APP_ID = "33mktu5voaTJRuwLqIXZ6";
 const REDIRECT_URI = "https://blueeyesamura.github.io/deriv-bot2/";
-const WS_URL = "wss://ws.binaryws.com/websockets/v3?app_id=1089";
+// Try multiple app IDs - 36544 is Deriv's own platform app ID which accepts PAT tokens
+const WS_URL = "wss://ws.binaryws.com/websockets/v3?app_id=36544";
 
 document.getElementById('oauthBtn').href =
   `https://oauth.deriv.com/oauth2/authorize?app_id=${APP_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=read,trade`;
