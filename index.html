@@ -265,28 +265,45 @@ let contractType='DIGITUNDER';
 
 // ── OAUTH TOKEN HANDLING ──────────────────────────────────────
 function getTokenFromUrl(){
-  // Deriv returns tokens in URL params after OAuth redirect
-  // Handles both ?token1=xxx and #token1=xxx formats
+  const fullUrl = window.location.href;
   const search = new URLSearchParams(window.location.search);
-  const hash = new URLSearchParams(window.location.hash.replace('#',''));
-  const token = search.get('token1') || search.get('token') || 
-                hash.get('token1') || hash.get('token') || null;
-  if(token){
-    // Also grab account info if available
-    const acct = search.get('acct1') || hash.get('acct1') || '';
-    const cur  = search.get('cur1')  || hash.get('cur1')  || '';
-    if(acct) log('Account: '+acct+' ('+cur+')','info');
+  const hash = new URLSearchParams(window.location.hash.replace(/^#/,''));
+  
+  // Try every possible way Deriv might return the token
+  let token = search.get('token1') 
+           || search.get('token') 
+           || hash.get('token1') 
+           || hash.get('token')
+           || null;
+
+  // Also try parsing raw URL for token1= pattern
+  if(!token){
+    const match = fullUrl.match(/[?&#]token1=([^&&#]+)/);
+    if(match) token = decodeURIComponent(match[1]);
   }
+  if(!token){
+    const match = fullUrl.match(/[?&#]token=([^&&#]+)/);
+    if(match) token = decodeURIComponent(match[1]);
+  }
+
   return token;
 }
 
 function init(){
+  // Show full URL for debugging
+  console.log('Full URL:', window.location.href);
+  console.log('Search:', window.location.search);
+  console.log('Hash:', window.location.hash);
+
   const urlToken=getTokenFromUrl();
   const savedToken=localStorage.getItem('deriv_token');
+
+  console.log('URL Token:', urlToken);
+  console.log('Saved Token:', savedToken ? 'exists' : 'none');
+
   if(urlToken){
     token=urlToken;
     localStorage.setItem('deriv_token',token);
-    // Clean URL
     window.history.replaceState({},'',window.location.pathname);
     showBot();
     connectWS();
@@ -569,3 +586,21 @@ init();
 </script>
 </body>
 </html>
+<script>
+// DEBUG BAR — shows what's in the URL after Deriv redirects back
+window.addEventListener('DOMContentLoaded', function(){
+  const url = window.location.href;
+  const hasToken = url.includes('token');
+  if(url.includes('token') || url.includes('acct')){
+    const bar = document.createElement('div');
+    bar.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#276749;color:#9ae6b4;padding:10px 16px;font-size:13px;font-family:monospace;z-index:9999;';
+    bar.textContent = '✓ Deriv redirect detected — loading bot... URL: ' + url.substring(0,120);
+    document.body.appendChild(bar);
+  } else if(!localStorage.getItem('deriv_token')){
+    const bar = document.createElement('div');
+    bar.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#742a2a;color:#feb2b2;padding:10px 16px;font-size:13px;font-family:monospace;z-index:9999;';
+    bar.textContent = '⚠ No token found in URL. Click Login with Deriv below.';
+    document.body.appendChild(bar);
+  }
+});
+</script>
