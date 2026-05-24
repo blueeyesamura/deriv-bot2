@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Deriv Smart Bot</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#0d1117;color:#e2e8f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh;}
+.app{max-width:960px;margin:0 auto;padding:20px;}
+.header{display:flex;align-items:center;gap:14px;margin-bottom:1.5rem;}
+.logo{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#e53e3e,#c53030);display:flex;align-items:center;justify-content:center;color:white;font-weight:800;font-size:15px;box-shadow:0 4px 14px rgba(229,62,62,0.4);}
+.header h1{font-size:22px;font-weight:700;color:#f7fafc;}
+.header p{font-size:12px;color:#718096;margin-top:2px;}
+
+/* LOGIN */
+.login-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:70vh;text-align:center;gap:20px;}
+.login-card{background:#161b27;border:1px solid #2d3748;border-radius:16px;padding:40px;max-width:420px;width:100%;}
+.login-card h2{font-size:22px;font-weight:700;margin-bottom:8px;}
+.login-card p{font-size:14px;color:#718096;margin-bottom:28px;line-height:1.6;}
+.btn-oauth{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:14px;background:#e53e3e;color:white;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;text-decoration:none;transition:background 0.2s,transform 0.1s;box-shadow:0 4px 14px rgba(229,62,62,0.35);}
+.btn-oauth:hover{background:#c53030;transform:translateY(-1px);}
+.oauth-note{font-size:12px;color:#4a5568;margin-top:16px;line-height:1.6;}
+
+/* STATUS */
+.sbar{display:flex;align-items:center;gap:10px;padding:10px 16px;background:#161b27;border-radius:10px;margin-bottom:1.2rem;border:1px solid #2d3748;}
+.dot{width:9px;height:9px;border-radius:50%;background:#4a5568;flex-shrink:0;}
+.dot.on{background:#38a169;}
+.dot.run{background:#e53e3e;animation:blink 1s infinite;}
+.dot.wait{background:#d69e2e;animation:blink 0.7s infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.25}}
+
+/* METRICS */
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1.2rem;}
+.met{background:#161b27;border:1px solid #2d3748;border-radius:12px;padding:14px;text-align:center;}
+.met .v{font-size:24px;font-weight:700;color:#f7fafc;}
+.met .l{font-size:11px;color:#718096;margin-top:3px;text-transform:uppercase;letter-spacing:0.05em;}
+
+/* PRICE */
+.price-panel{background:#161b27;border:1px solid #2d3748;border-radius:14px;padding:16px 18px;margin-bottom:14px;}
+.price-row{display:flex;align-items:center;gap:12px;margin-bottom:12px;}
+.price-full{font-size:30px;font-weight:700;font-family:'Courier New',monospace;color:#f7fafc;}
+.ld{padding:3px 8px;border-radius:7px;transition:all 0.15s;display:inline-block;font-size:32px;}
+.ld.ok{background:#22543d;color:#9ae6b4;box-shadow:0 0 12px rgba(56,161,105,0.3);}
+.ld.bad{background:#742a2a;color:#feb2b2;}
+.ld.neu{color:#4a5568;}
+.strip{display:flex;gap:5px;flex-wrap:wrap;}
+.dchip{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;font-family:monospace;border:1px solid #2d3748;color:#a0aec0;}
+.dchip.ok{background:#22543d;color:#9ae6b4;border-color:#276749;}
+.dchip.bad{background:#742a2a;color:#feb2b2;border-color:#9b2c2c;}
+.dchip.new{outline:2px solid #4299e1;outline-offset:1px;}
+
+/* GRID */
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.card{background:#161b27;border:1px solid #2d3748;border-radius:14px;padding:1.1rem 1.3rem;}
+.card.full{grid-column:1/-1;}
+.card h3{font-size:11px;font-weight:600;color:#718096;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px;}
+label{font-size:13px;color:#a0aec0;display:block;margin-bottom:4px;}
+input,select{width:100%;margin-bottom:10px;font-size:13px;background:#0d1117;border:1px solid #2d3748;color:#e2e8f0;border-radius:8px;padding:8px 11px;outline:none;transition:border 0.2s;}
+input:focus,select:focus{border-color:#4299e1;}
+.row{display:flex;gap:10px;}
+.row>div{flex:1;}
+
+/* CONTRACT TABS */
+.ctabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:14px;}
+.ctab{padding:9px 4px;font-size:12px;font-weight:600;cursor:pointer;text-align:center;background:#0d1117;color:#718096;border:1px solid #2d3748;border-radius:8px;transition:all 0.2s;}
+.ctab.active{background:#1a2744;color:#90cdf4;border-color:#4299e1;}
+.ctab.active.green{background:#1a2e1a;color:#9ae6b4;border-color:#38a169;}
+.ctab.active.red{background:#2a1a1a;color:#feb2b2;border-color:#e53e3e;}
+.ctab.active.yellow{background:#2a2a1a;color:#faf089;border-color:#d69e2e;}
+
+/* CONDITION DISPLAY */
+.cond-display{background:#0d1117;border:1px solid #2d3748;border-radius:10px;padding:12px 14px;margin-bottom:12px;font-size:13px;line-height:1.8;}
+.cond-display .rule{color:#90cdf4;font-weight:600;}
+.cond-display .valid{color:#9ae6b4;}
+.cond-display .skip{color:#fc8181;}
+
+/* LOG */
+.log{background:#0a0d14;border:1px solid #2d3748;border-radius:10px;padding:12px;height:170px;overflow-y:auto;font-size:12px;font-family:'Courier New',monospace;}
+.ll{padding:3px 0;border-bottom:1px solid #161b27;}
+.ll.win{color:#68d391;} .ll.loss{color:#fc8181;} .ll.info{color:#63b3ed;} .ll.skip{color:#f6ad55;} .ll.def{color:#718096;}
+
+/* STREAK */
+.streak{display:flex;gap:5px;flex-wrap:wrap;min-height:16px;}
+.sdot{width:15px;height:15px;border-radius:4px;}
+.sdot.w{background:#38a169;} .sdot.l{background:#c53030;}
+
+/* BUTTONS */
+.btn-row{display:flex;gap:10px;}
+.bstart{flex:1;padding:12px;background:linear-gradient(135deg,#e53e3e,#c53030);color:white;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(229,62,62,0.3);transition:all 0.2s;}
+.bstart:hover:not(:disabled){transform:translateY(-1px);}
+.bstart:disabled{opacity:0.35;cursor:not-allowed;box-shadow:none;}
+.bstop{flex:1;padding:12px;background:transparent;color:#a0aec0;border:1px solid #2d3748;border-radius:10px;font-size:15px;cursor:pointer;transition:all 0.2s;}
+.bstop:hover:not(:disabled){background:#161b27;}
+.bstop:disabled{opacity:0.35;cursor:not-allowed;}
+.warn{font-size:12px;color:#f6ad55;background:#1a1500;padding:10px 14px;border-radius:8px;margin-top:12px;border-left:3px solid #d69e2e;line-height:1.6;}
+.logout-btn{padding:7px 14px;background:transparent;color:#718096;border:1px solid #2d3748;border-radius:8px;font-size:13px;cursor:pointer;margin-left:auto;}
+.logout-btn:hover{color:#fc8181;border-color:#fc8181;}
+
+::-webkit-scrollbar{width:4px;}
+::-webkit-scrollbar-track{background:#0d1117;}
+::-webkit-scrollbar-thumb{background:#2d3748;border-radius:4px;}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div class="logo">DX</div>
+    <div>
+      <h1>Deriv Smart Bot</h1>
+      <p>Digit-gated entry · Under · Over · Matches · Even · Odd</p>
+    </div>
+    <button class="logout-btn" id="logoutBtn" style="display:none" onclick="logout()">Logout</button>
+  </div>
+
+  <!-- LOGIN SCREEN -->
+  <div class="login-screen" id="loginScreen">
+    <div class="login-card">
+      <h2>Connect Your Deriv Account</h2>
+      <p>Click the button below to log in with your Deriv account securely via OAuth. No token or OTP needed — just your email and password.</p>
+      <a class="btn-oauth" id="oauthBtn" href="#">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+        Login with Deriv
+      </a>
+      <p class="oauth-note">You will be redirected to Deriv's official login page.<br/>Your credentials are never stored or seen by this app.</p>
+    </div>
+  </div>
+
+  <!-- BOT SCREEN -->
+  <div id="botScreen" style="display:none">
+    <div class="sbar"><div class="dot" id="sDot"></div><span id="sTxt" style="font-size:13px;color:#718096">Connecting...</span></div>
+
+    <div class="metrics">
+      <div class="met"><div class="v" id="mBal">—</div><div class="l">Balance ($)</div></div>
+      <div class="met"><div class="v" id="mTrades">0</div><div class="l">Trades</div></div>
+      <div class="met"><div class="v" id="mWins">0</div><div class="l">Wins</div></div>
+      <div class="met"><div class="v" id="mPnl">0.00</div><div class="l">P&L ($)</div></div>
+    </div>
+
+    <div class="price-panel">
+      <div class="price-row">
+        <div class="price-full"><span id="pBase" style="color:#4a5568">———————</span><span class="ld neu" id="pDigit">—</span></div>
+        <div style="flex:1"></div>
+        <div id="entryStatus" style="font-size:13px;font-weight:700;color:#718096">Watching...</div>
+      </div>
+      <div style="font-size:11px;color:#4a5568;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.06em">Last 20 digits</div>
+      <div class="strip" id="strip"></div>
+    </div>
+
+    <div class="grid">
+
+      <!-- CONTRACT TYPE -->
+      <div class="card full">
+        <h3>Contract Type</h3>
+        <div class="ctabs">
+          <div class="ctab active green" id="ct_DIGITUNDER" onclick="setContractType('DIGITUNDER')">Under</div>
+          <div class="ctab" id="ct_DIGITOVER" onclick="setContractType('DIGITOVER')">Over</div>
+          <div class="ctab" id="ct_DIGITMATCH" onclick="setContractType('DIGITMATCH')">Matches</div>
+          <div class="ctab" id="ct_DIGITDIFF" onclick="setContractType('DIGITDIFF')">Differs</div>
+          <div class="ctab" id="ct_DIGITEVEN" onclick="setContractType('DIGITEVEN')">Even</div>
+          <div class="ctab" id="ct_DIGITODD" onclick="setContractType('DIGITODD')">Odd</div>
+        </div>
+
+        <div id="barrierRow" class="row">
+          <div>
+            <label id="barrierLabel">Barrier digit (Under X)</label>
+            <select id="barrier" onchange="updateCondDisplay()">
+              <option>0</option><option>1</option><option>2</option><option>3</option>
+              <option>4</option><option>5</option><option>6</option><option>7</option>
+              <option value="8" selected>8</option><option>9</option>
+            </select>
+          </div>
+          <div>
+            <label>Symbol</label>
+            <select id="symbol">
+              <option value="R_100">Volatility 100</option>
+              <option value="R_75">Volatility 75</option>
+              <option value="R_50">Volatility 50</option>
+              <option value="R_25">Volatility 25</option>
+              <option value="R_10">Volatility 10</option>
+              <option value="1HZ100V">Vol 100 (1s)</option>
+              <option value="1HZ10V">Vol 10 (1s)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="cond-display" id="condDisplay"></div>
+      </div>
+
+      <!-- STAKE -->
+      <div class="card">
+        <h3>Stake & Duration</h3>
+        <div class="row">
+          <div><label>Stake ($)</label><input type="number" id="stake" value="1" min="0.35" step="0.01"/></div>
+          <div><label>Ticks</label><input type="number" id="ticks" value="1" min="1" max="10"/></div>
+        </div>
+        <label>Strategy on loss</label>
+        <select id="strategy">
+          <option value="flat">Flat — same stake always</option>
+          <option value="martingale">Martingale — double on loss</option>
+          <option value="dalembert">D'Alembert — +1 unit on loss</option>
+          <option value="anti">Anti-Martingale — double on win</option>
+        </select>
+      </div>
+
+      <!-- LIMITS -->
+      <div class="card">
+        <h3>Risk Limits</h3>
+        <div class="row">
+          <div><label>Stop loss ($)</label><input type="number" id="stopLoss" value="10" min="0.5" step="0.5"/></div>
+          <div><label>Take profit ($)</label><input type="number" id="takeProfit" value="5" min="0.5" step="0.5"/></div>
+        </div>
+        <label>Max consecutive losses</label>
+        <select id="maxLoss">
+          <option value="0">No limit</option>
+          <option value="3" selected>3 → auto stop</option>
+          <option value="5">5 → auto stop</option>
+          <option value="10">10 → auto stop</option>
+        </select>
+      </div>
+
+      <!-- STREAK -->
+      <div class="card full">
+        <h3>Results</h3>
+        <div class="streak" id="streak"><span id="noRes" style="font-size:12px;color:#4a5568">No trades yet</span></div>
+      </div>
+
+      <!-- LOG -->
+      <div class="card full">
+        <h3>Live Log</h3>
+        <div class="log" id="log"><div class="ll info">Connected. Select your settings and press Start.</div></div>
+      </div>
+
+      <!-- BUTTONS -->
+      <div class="card full">
+        <div class="btn-row">
+          <button class="bstart" id="startBtn" onclick="startBot()" disabled>▶ Start Bot</button>
+          <button class="bstop" id="stopBtn" onclick="stopBot()" disabled>■ Stop</button>
+        </div>
+        <div class="warn">⚠ Real money at risk. Always set a stop loss. Test on a demo account first before using real money.</div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+// ── OAUTH CONFIG ──────────────────────────────────────────────
+// Replace APP_ID with your own from app.deriv.com/app-registration
+// Default 1089 works for personal/testing use
+const APP_ID = 1089;
+const REDIRECT_URI = window.location.href.split('?')[0].split('#')[0];
+const WS_URL = `wss://ws.binaryws.com/websockets/v3?app_id=${APP_ID}`;
+
+// Set OAuth login URL
+document.getElementById('oauthBtn').href =
+  `https://oauth.deriv.com/oauth2/authorize?app_id=${APP_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=read,trade`;
+
+// ── STATE ─────────────────────────────────────────────────────
+let ws=null, running=false, inTrade=false;
+let token=null, balance=null;
+let currentStake=0, trades=0, wins=0, pnl=0;
+let streakArr=[], digitHistory=[], consecLoss=0;
+let contractType='DIGITUNDER';
+
+// ── OAUTH TOKEN HANDLING ──────────────────────────────────────
+function getTokenFromUrl(){
+  const params=new URLSearchParams(window.location.search);
+  // Deriv returns token1, acct1 etc.
+  return params.get('token1')||params.get('token');
+}
+
+function init(){
+  const urlToken=getTokenFromUrl();
+  const savedToken=localStorage.getItem('deriv_token');
+  if(urlToken){
+    token=urlToken;
+    localStorage.setItem('deriv_token',token);
+    // Clean URL
+    window.history.replaceState({},'',window.location.pathname);
+    showBot();
+    connectWS();
+  } else if(savedToken){
+    token=savedToken;
+    showBot();
+    connectWS();
+  } else {
+    showLogin();
+  }
+}
+
+function showLogin(){
+  document.getElementById('loginScreen').style.display='flex';
+  document.getElementById('botScreen').style.display='none';
+}
+function showBot(){
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('botScreen').style.display='block';
+  document.getElementById('logoutBtn').style.display='block';
+  updateCondDisplay();
+}
+function logout(){
+  localStorage.removeItem('deriv_token');
+  token=null;
+  if(ws) ws.close();
+  showLogin();
+}
+
+// ── WEBSOCKET ─────────────────────────────────────────────────
+function connectWS(){
+  if(ws) ws.close();
+  setStatus('Connecting...','');
+  ws=new WebSocket(WS_URL);
+  ws.onopen=()=>{
+    log('Connected — authorizing...','info');
+    ws.send(JSON.stringify({authorize:token}));
+  };
+  ws.onmessage=(e)=>{
+    const msg=JSON.parse(e.data);
+    if(msg.error){
+      log('Error: '+msg.error.message,'loss');
+      if(msg.msg_type==='authorize'){
+        setStatus('Auth failed — logging out','');
+        logout();
+      }
+      return;
+    }
+    handleMessage(msg);
+  };
+  ws.onerror=()=>{ setStatus('Connection error',''); log('WebSocket error — retrying in 3s...','loss'); setTimeout(connectWS,3000); };
+  ws.onclose=()=>{ setStatus('Disconnected',''); running=false; updateBtns(); };
+}
+
+function handleMessage(msg){
+  if(msg.msg_type==='authorize'){
+    balance=msg.authorize.balance;
+    setStatus('Connected: '+msg.authorize.email,'on');
+    log('Authorized ✓  Balance: $'+parseFloat(balance).toFixed(2),'info');
+    updateMetrics();
+    document.getElementById('startBtn').disabled=false;
+  }
+  if(msg.msg_type==='balance'){
+    balance=msg.balance.balance; updateMetrics();
+  }
+  if(msg.msg_type==='tick'&&running){
+    const quote=msg.tick.quote;
+    const digit=getLastDigit(quote);
+    const ok=meetsCondition(digit);
+    updatePriceDisplay(quote,digit,ok);
+    if(!inTrade){
+      if(ok){
+        document.getElementById('entryStatus').textContent='✓ Entering!';
+        document.getElementById('entryStatus').style.color='#68d391';
+        setStatus('Condition met — entering trade','run');
+        placeTrade();
+      } else {
+        document.getElementById('entryStatus').textContent='Digit '+digit+' — waiting...';
+        document.getElementById('entryStatus').style.color='#f6ad55';
+        setStatus('Digit '+digit+' does not meet condition — watching','wait');
+      }
+    }
+  }
+  if(msg.msg_type==='proposal_open_contract'){
+    const c=msg.proposal_open_contract;
+    if(c.is_expired||c.is_sold){
+      const won=c.profit>0;
+      trades++; pnl=parseFloat((pnl+c.profit).toFixed(2));
+      if(won){wins++;consecLoss=0;}else{consecLoss++;}
+      streakArr.push(won?'w':'l');
+      balance=c.balance_after; inTrade=false;
+      log((won?'✓ WIN':'✗ LOSS')+' $'+parseFloat(c.profit).toFixed(2)+' | P&L: $'+pnl.toFixed(2),(won?'win':'loss'));
+      updateMetrics(); updateStreak();
+      const sl=parseFloat(document.getElementById('stopLoss').value);
+      const tp=parseFloat(document.getElementById('takeProfit').value);
+      const ml=parseInt(document.getElementById('maxLoss').value);
+      if(pnl<=-sl){log('STOP LOSS hit. Bot stopped.','loss');stopBot();return;}
+      if(pnl>=tp){log('TAKE PROFIT reached. Bot stopped.','win');stopBot();return;}
+      if(ml>0&&consecLoss>=ml){log(ml+' losses in a row — bot paused.','loss');stopBot();return;}
+      currentStake=getNextStake(won);
+      setStatus('Trade closed — watching next digit...','wait');
+      document.getElementById('entryStatus').textContent='Watching...';
+      document.getElementById('entryStatus').style.color='';
+    }
+  }
+}
+
+// ── CONDITION LOGIC ───────────────────────────────────────────
+function meetsCondition(digit){
+  const b=parseInt(document.getElementById('barrier').value);
+  switch(contractType){
+    case 'DIGITUNDER': return digit<b;      // e.g. Under 8 → digits 0-7
+    case 'DIGITOVER':  return digit>b;      // e.g. Over 1 → digits 2-9; Over 8 → digit 9 only
+    case 'DIGITMATCH': return digit===b;    // exact match
+    case 'DIGITDIFF':  return digit!==b;    // differs
+    case 'DIGITEVEN':  return digit%2===0;  // 0,2,4,6,8
+    case 'DIGITODD':   return digit%2!==0;  // 1,3,5,7,9
+  }
+  return false;
+}
+
+function updateCondDisplay(){
+  const b=parseInt(document.getElementById('barrier').value);
+  let rule='', valid=[], skip=[];
+  for(let d=0;d<=9;d++){
+    if(meetsConditionFor(d,b)) valid.push(d); else skip.push(d);
+  }
+  switch(contractType){
+    case 'DIGITUNDER':
+      rule=`Last digit must be UNDER ${b}`;
+      document.getElementById('barrierLabel').textContent=`Barrier (Under X)`;
+      break;
+    case 'DIGITOVER':
+      rule=`Last digit must be OVER ${b}`;
+      document.getElementById('barrierLabel').textContent=`Barrier (Over X)`;
+      break;
+    case 'DIGITMATCH':
+      rule=`Last digit must MATCH ${b}`;
+      document.getElementById('barrierLabel').textContent=`Match digit`;
+      break;
+    case 'DIGITDIFF':
+      rule=`Last digit must DIFFER from ${b}`;
+      document.getElementById('barrierLabel').textContent=`Differs from`;
+      break;
+    case 'DIGITEVEN':
+      rule='Last digit must be EVEN'; valid=[0,2,4,6,8]; skip=[1,3,5,7,9];
+      break;
+    case 'DIGITODD':
+      rule='Last digit must be ODD'; valid=[1,3,5,7,9]; skip=[0,2,4,6,8];
+      break;
+  }
+  document.getElementById('condDisplay').innerHTML=
+    `<span class="rule">Entry rule:</span> ${rule}<br>`+
+    `<span class="valid">✓ TRADE on digits: ${valid.join(', ')||'none'}</span><br>`+
+    `<span class="skip">✗ SKIP on digits: ${skip.join(', ')||'none'}</span>`;
+}
+
+function meetsConditionFor(digit,b){
+  switch(contractType){
+    case 'DIGITUNDER': return digit<b;
+    case 'DIGITOVER':  return digit>b;
+    case 'DIGITMATCH': return digit===b;
+    case 'DIGITDIFF':  return digit!==b;
+    case 'DIGITEVEN':  return digit%2===0;
+    case 'DIGITODD':   return digit%2!==0;
+  }
+  return false;
+}
+
+function setContractType(type){
+  contractType=type;
+  const barrierRow=document.getElementById('barrierRow');
+  barrierRow.style.display=(type==='DIGITEVEN'||type==='DIGITODD')?'none':'';
+  // Reset tab styles
+  ['DIGITUNDER','DIGITOVER','DIGITMATCH','DIGITDIFF','DIGITEVEN','DIGITODD'].forEach(t=>{
+    const el=document.getElementById('ct_'+t);
+    if(el) el.className='ctab'+(t===type?' active':'');
+  });
+  updateCondDisplay();
+}
+
+// ── TRADE LOGIC ───────────────────────────────────────────────
+function getLastDigit(q){const s=q.toString();return parseInt(s[s.length-1]);}
+
+function placeTrade(){
+  if(!ws||ws.readyState!==1||!running||inTrade) return;
+  inTrade=true;
+  const sym=document.getElementById('symbol').value;
+  const ticks=parseInt(document.getElementById('ticks').value);
+  const barrier=document.getElementById('barrier').value;
+  const params={
+    buy:1, price:currentStake,
+    parameters:{amount:currentStake,basis:'stake',contract_type:contractType,currency:'USD',duration:ticks,duration_unit:'t',symbol:sym},
+    subscribe:1
+  };
+  if(['DIGITUNDER','DIGITOVER','DIGITMATCH','DIGITDIFF'].includes(contractType))
+    params.parameters.barrier=barrier;
+  log('Trade: '+contractType+' '+barrier+' | $'+currentStake.toFixed(2),'info');
+  ws.send(JSON.stringify(params));
+  ws.send(JSON.stringify({balance:1,subscribe:1}));
+}
+
+function getNextStake(won){
+  const s=document.getElementById('strategy').value;
+  const init=parseFloat(document.getElementById('stake').value);
+  if(s==='flat') return init;
+  if(s==='martingale') return won?init:parseFloat((currentStake*2).toFixed(2));
+  if(s==='anti') return won?parseFloat((currentStake*2).toFixed(2)):init;
+  if(s==='dalembert') return won?Math.max(init,parseFloat((currentStake-init).toFixed(2))):parseFloat((currentStake+init).toFixed(2));
+  return init;
+}
+
+// ── DISPLAY HELPERS ───────────────────────────────────────────
+function updatePriceDisplay(quote,digit,ok){
+  const s=quote.toString();
+  document.getElementById('pBase').textContent=s.slice(0,-1);
+  const el=document.getElementById('pDigit');
+  el.textContent=digit; el.className='ld '+(ok?'ok':'bad');
+  el.style.transform='scale(1.3)'; setTimeout(()=>el.style.transform='',180);
+  digitHistory.push({digit,ok});
+  if(digitHistory.length>20) digitHistory.shift();
+  const strip=document.getElementById('strip'); strip.innerHTML='';
+  digitHistory.forEach((item,i)=>{
+    const chip=document.createElement('div');
+    chip.className='dchip '+(item.ok?'ok':'bad')+(i===digitHistory.length-1?' new':'');
+    chip.textContent=item.digit; strip.appendChild(chip);
+  });
+}
+function log(msg,type='def'){
+  const el=document.getElementById('log');
+  const d=document.createElement('div');
+  d.className='ll '+type;
+  d.textContent=new Date().toLocaleTimeString()+' '+msg;
+  el.appendChild(d); el.scrollTop=el.scrollHeight;
+}
+function setStatus(t,s=''){
+  document.getElementById('sTxt').textContent=t;
+  document.getElementById('sDot').className='dot '+s;
+}
+function updateMetrics(){
+  if(balance!==null) document.getElementById('mBal').textContent=parseFloat(balance).toFixed(2);
+  document.getElementById('mTrades').textContent=trades;
+  document.getElementById('mWins').textContent=wins;
+  const el=document.getElementById('mPnl');
+  el.textContent=(pnl>=0?'+':'')+pnl.toFixed(2);
+  el.style.color=pnl>0?'#68d391':pnl<0?'#fc8181':'';
+}
+function updateStreak(){
+  const el=document.getElementById('streak');
+  document.getElementById('noRes').style.display=streakArr.length?'none':'';
+  el.querySelectorAll('.sdot').forEach(e=>e.remove());
+  streakArr.slice(-20).forEach(r=>{const d=document.createElement('div');d.className='sdot '+r;el.appendChild(d);});
+}
+function updateBtns(){
+  document.getElementById('startBtn').disabled=running||!ws||ws.readyState!==1;
+  document.getElementById('stopBtn').disabled=!running;
+}
+
+// ── BOT CONTROLS ──────────────────────────────────────────────
+function startBot(){
+  if(!ws||ws.readyState!==1) return;
+  running=true; inTrade=false; consecLoss=0;
+  currentStake=parseFloat(document.getElementById('stake').value);
+  const sym=document.getElementById('symbol').value;
+  setStatus('Bot running — watching digits...','run');
+  updateBtns();
+  log('Bot started: '+contractType+' on '+sym,'info');
+  ws.send(JSON.stringify({ticks:sym,subscribe:1}));
+}
+function stopBot(){
+  running=false; inTrade=false;
+  setStatus('Stopped','on'); updateBtns();
+  document.getElementById('entryStatus').textContent='Stopped';
+  document.getElementById('entryStatus').style.color='';
+  log('Bot stopped.','def');
+}
+
+// ── BOOT ──────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
