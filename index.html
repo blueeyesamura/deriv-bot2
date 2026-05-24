@@ -248,12 +248,12 @@ input:focus,select:focus{border-color:#4299e1;}
 // ── OAUTH CONFIG ──────────────────────────────────────────────
 // Replace APP_ID with your own from app.deriv.com/app-registration
 // Default 1089 works for personal/testing use
-const APP_ID = 1089;
-const REDIRECT_URI = window.location.href.split('?')[0].split('#')[0];
+const APP_ID = "33mktu5voaTJRuwLqIXZ6";
+const REDIRECT_URI = 'https://blueeyesamura.github.io/deriv-bot2/';
 const WS_URL = `wss://ws.binaryws.com/websockets/v3?app_id=${APP_ID}`;
 
 // Set OAuth login URL
-document.getElementById('oauthBtn').href =
+document.getElementById('oauthBtn').href = `https://oauth.deriv.com/oauth2/authorize?app_id=${APP_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=read,trade`;
   `https://oauth.deriv.com/oauth2/authorize?app_id=${APP_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=read,trade`;
 
 // ── STATE ─────────────────────────────────────────────────────
@@ -265,9 +265,19 @@ let contractType='DIGITUNDER';
 
 // ── OAUTH TOKEN HANDLING ──────────────────────────────────────
 function getTokenFromUrl(){
-  const params=new URLSearchParams(window.location.search);
-  // Deriv returns token1, acct1 etc.
-  return params.get('token1')||params.get('token');
+  // Deriv returns tokens in URL params after OAuth redirect
+  // Handles both ?token1=xxx and #token1=xxx formats
+  const search = new URLSearchParams(window.location.search);
+  const hash = new URLSearchParams(window.location.hash.replace('#',''));
+  const token = search.get('token1') || search.get('token') || 
+                hash.get('token1') || hash.get('token') || null;
+  if(token){
+    // Also grab account info if available
+    const acct = search.get('acct1') || hash.get('acct1') || '';
+    const cur  = search.get('cur1')  || hash.get('cur1')  || '';
+    if(acct) log('Account: '+acct+' ('+cur+')','info');
+  }
+  return token;
 }
 
 function init(){
