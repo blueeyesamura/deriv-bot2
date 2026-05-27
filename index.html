@@ -86,23 +86,18 @@ input:focus,select:focus{border-color:#4299e1;}
     <button class="logout-btn" id="logoutBtn" style="display:none" onclick="logout()">Logout</button>
   </div>
 
-  <!-- LOGIN -->
   <div id="loginScreen" class="login-screen">
     <div class="login-card">
       <h2>Connect Your Account</h2>
-      <p class="sub">Enter your Account ID and PAT token to connect.</p>
+      <p class="sub">Enter your PAT token to connect.</p>
 
       <div class="step">
         <div class="step-num">1</div>
-        <div>Go to <a href="https://app.deriv.com" target="_blank">app.deriv.com</a> — your Account ID is shown on the top left (e.g. <strong>CR1234567</strong> or <strong>VRTC1234567</strong>)</div>
-      </div>
-      <div class="step">
-        <div class="step-num">2</div>
         <div>Go to <a href="https://app.deriv.com/account/api-token" target="_blank">app.deriv.com/account/api-token</a> → Create token → tick <strong>Read + Trade</strong></div>
       </div>
       <div class="step" style="margin-bottom:20px">
-        <div class="step-num">3</div>
-        <div>Paste both below and connect</div>
+        <div class="step-num">2</div>
+        <div>Paste your new PAT token below and connect</div>
       </div>
 
       <div class="acct-row">
@@ -110,21 +105,16 @@ input:focus,select:focus{border-color:#4299e1;}
         <button class="acct-btn active" id="btnReal" onclick="setAcct('real')">Real Account</button>
       </div>
 
-      <label>Account ID (e.g. CR1234567 or VRTC1234567)</label>
-      <input type="text" id="acctIdInput" placeholder="Your Deriv account ID"/>
+      <label>Account ID</label>
+      <input type="text" id="acctIdInput" value="CR00133272" placeholder="Your Deriv account ID"/>
 
       <label>PAT Token</label>
       <input type="password" id="patInput" placeholder="Paste your PAT token here"/>
 
       <button class="btn-connect" id="connectBtn" onclick="doConnect()">Connect to Deriv</button>
-
-      <div class="note-box">
-        <strong>Where to find your Account ID:</strong> Log in to app.deriv.com → look at top-left corner next to your name. It starts with CR (real) or VRTC (demo).
-      </div>
     </div>
   </div>
 
-  <!-- BOT -->
   <div id="botScreen" style="display:none">
     <div class="sbar"><div class="dot" id="sDot"></div><span id="sTxt" style="font-size:13px;color:#718096">Connecting...</span></div>
     <div class="metrics">
@@ -215,7 +205,7 @@ input:focus,select:focus{border-color:#4299e1;}
         </div>
         <div class="card">
           <h3>Live Log</h3>
-          <div class="log" id="log"><div class="ll info">Ready — enter your Account ID and PAT token.</div></div>
+          <div class="log" id="log"><div class="ll info">Ready — enter your PAT token.</div></div>
         </div>
         <div class="btn-row">
           <button class="bstart" id="startBtn" onclick="startBot()" disabled>▶ Start Bot</button>
@@ -253,14 +243,13 @@ async function doConnect(){
   const pat=document.getElementById('patInput').value.trim();
   const acctId=document.getElementById('acctIdInput').value.trim();
   if(!pat){alert('Please paste your PAT token.');return;}
-  if(!acctId){alert('Please enter your Account ID (e.g. CR1234567).');return;}
+  if(!acctId){alert('Please enter your Account ID.');return;}
   patToken=pat;
   const btn=document.getElementById('connectBtn');
   btn.disabled=true; btn.textContent='Connecting...';
   log('Connecting using Account ID: '+acctId,'info');
 
   try {
-    // Step 1: Get OTP using account ID directly (as per Deriv docs)
     log('Getting OTP from Deriv...','info');
     const r = await fetch(`https://api.derivws.com/trading/v1/options/accounts/${acctId}/otp`,{
       method:'POST',
@@ -304,7 +293,6 @@ function connectWS(url, pat, acctId){
     document.getElementById('startBtn').disabled=false;
     document.getElementById('connectBtn').disabled=false;
     document.getElementById('connectBtn').textContent='Reconnect';
-    // Request account balance
     ws.send(JSON.stringify({action:'get_balance'}));
   };
   ws.onmessage=(e)=>{
@@ -319,23 +307,26 @@ function connectWS(url, pat, acctId){
 
 function connectLegacy(token){
   const urls=[
+    `wss://ws.binaryws.com/websockets/v3?app_id=${APP_ID}`,
+    `wss://ws.derivws.com/websockets/v3?app_id=${APP_ID}`,
     'wss://ws.binaryws.com/websockets/v3?app_id=1089',
-    'wss://ws.derivws.com/websockets/v3?app_id=1089',
-    'wss://ws.binaryws.com/websockets/v3?app_id=36544',
-    'wss://ws.derivws.com/websockets/v3?app_id=36544',
+    'wss://ws.derivws.com/websockets/v3?app_id=1089'
   ];
   tryLegacy(urls,0,token);
 }
 
-function tryLegacy(urls,i,token){
+async function tryLegacy(urls,i,token){
   if(i>=urls.length){
     log('❌ All connections failed.','loss');
-    log('⚠ Try using a VPN — your ISP may be blocking Deriv.','skip');
-    setStatus('Failed — try VPN','');
+    log('⚠ Network blocked. Clear cache or check connection.','skip');
+    setStatus('Failed — try VPN/Proxy','');
     document.getElementById('connectBtn').disabled=false;
     document.getElementById('connectBtn').textContent='Retry';
     return;
   }
+  
+  await new Promise(resolve => setTimeout(resolve, 2000));
+  
   if(ws){ try{ws.close();}catch(e){} }
   ws=new WebSocket(urls[i]);
   let ok=false;
