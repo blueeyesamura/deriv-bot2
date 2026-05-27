@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Deriv Smart Bot</title>
+<title>Deriv Smart Bot | Pro Terminal</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:#0d1117;color:#e2e8f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh;}
@@ -86,11 +86,10 @@ input:focus,select:focus{border-color:#4299e1;}
     <button class="logout-btn" id="logoutBtn" style="display:none" onclick="logout()">Logout</button>
   </div>
 
-  <!-- LOGIN -->
   <div id="loginScreen" class="login-screen">
     <div class="login-card">
       <h2>Connect Your Account</h2>
-      <p class="sub">Enter your PAT token to connect.</p>
+      <p class="sub">Enter your Account ID and PAT token to establish a secure OTP stream.</p>
 
       <div class="step">
         <div class="step-num">1</div>
@@ -98,12 +97,7 @@ input:focus,select:focus{border-color:#4299e1;}
       </div>
       <div class="step" style="margin-bottom:20px">
         <div class="step-num">2</div>
-        <div>Paste your new PAT token below and connect</div>
-      </div>
-
-      <div class="acct-row">
-        <button class="acct-btn" id="btnDemo" onclick="setAcct('demo')">Demo Account</button>
-        <button class="acct-btn active" id="btnReal" onclick="setAcct('real')">Real Account</button>
+        <div>Ensure your Account ID matches the token environment (e.g. CR for Real, VRTC for Demo).</div>
       </div>
 
       <label>Account ID</label>
@@ -112,11 +106,14 @@ input:focus,select:focus{border-color:#4299e1;}
       <label>PAT Token</label>
       <input type="password" id="patInput" placeholder="Paste your PAT token here"/>
 
-      <button class="btn-connect" id="connectBtn" onclick="doConnect()">Connect to Deriv</button>
+      <button class="btn-connect" id="connectBtn" onclick="doConnect()">Connect Securely</button>
+      
+      <div class="note-box">
+        <strong>Status:</strong> Strict REST + OTP enforcement active. Legacy fallback loops disabled.
+      </div>
     </div>
   </div>
 
-  <!-- BOT -->
   <div id="botScreen" style="display:none">
     <div class="sbar"><div class="dot" id="sDot"></div><span id="sTxt" style="font-size:13px;color:#718096">Connecting...</span></div>
     <div class="metrics">
@@ -145,9 +142,6 @@ input:focus,select:focus{border-color:#4299e1;}
             <div class="mkt-tab" onclick="setMkt(this,'crash')">Crash/Boom</div>
             <div class="mkt-tab" onclick="setMkt(this,'jump')">Jump</div>
             <div class="mkt-tab" onclick="setMkt(this,'step')">Step</div>
-            <div class="mkt-tab" onclick="setMkt(this,'forex')">Forex</div>
-            <div class="mkt-tab" onclick="setMkt(this,'crypto')">Crypto</div>
-            <div class="mkt-tab" onclick="setMkt(this,'commodity')">Commodity</div>
           </div>
           <select id="symbol" style="margin-bottom:0"></select>
         </div>
@@ -207,7 +201,7 @@ input:focus,select:focus{border-color:#4299e1;}
         </div>
         <div class="card">
           <h3>Live Log</h3>
-          <div class="log" id="log"><div class="ll info">Ready — enter your PAT token.</div></div>
+          <div class="log" id="log"><div class="ll info">System ready. Awaiting connection.</div></div>
         </div>
         <div class="btn-row">
           <button class="bstart" id="startBtn" onclick="startBot()" disabled>▶ Start Bot</button>
@@ -220,47 +214,74 @@ input:focus,select:focus{border-color:#4299e1;}
 </div>
 
 <script>
-// OFFICIAL APP ID 1089 (Deriv's default API playground ID to avoid strict CORS/Scope rejections)
-const APP_ID = "1089"; 
+// Using your exact explicit App ID for REST API routing
+const APP_ID = "33mktu5voaTJRuwLqIXZ6"; 
 
 const MARKETS={
   synthetic:[{v:"R_100",l:"Volatility 100"},{v:"R_75",l:"Volatility 75"},{v:"R_50",l:"Volatility 50"},{v:"R_25",l:"Volatility 25"},{v:"R_10",l:"Volatility 10"},{v:"1HZ100V",l:"Volatility 100 (1s)"},{v:"1HZ75V",l:"Volatility 75 (1s)"},{v:"1HZ50V",l:"Volatility 50 (1s)"},{v:"1HZ25V",l:"Volatility 25 (1s)"},{v:"1HZ10V",l:"Volatility 10 (1s)"}],
   crash:[{v:"CRASH1000",l:"Crash 1000"},{v:"CRASH500",l:"Crash 500"},{v:"CRASH300",l:"Crash 300"},{v:"BOOM1000",l:"Boom 1000"},{v:"BOOM500",l:"Boom 500"},{v:"BOOM300",l:"Boom 300"}],
   jump:[{v:"JD10",l:"Jump 10"},{v:"JD25",l:"Jump 25"},{v:"JD50",l:"Jump 50"},{v:"JD75",l:"Jump 75"},{v:"JD100",l:"Jump 100"}],
-  step:[{v:"stpRNG",l:"Step Index"}],
-  forex:[{v:"frxEURUSD",l:"EUR/USD"},{v:"frxGBPUSD",l:"GBP/USD"},{v:"frxUSDJPY",l:"USD/JPY"},{v:"frxAUDUSD",l:"AUD/USD"},{v:"frxUSDCAD",l:"USD/CAD"},{v:"frxUSDCHF",l:"USD/CHF"},{v:"frxEURGBP",l:"EUR/GBP"},{v:"frxEURJPY",l:"EUR/JPY"},{v:"frxNZDUSD",l:"NZD/USD"}],
-  crypto:[{v:"cryBTCUSD",l:"BTC/USD"},{v:"cryETHUSD",l:"ETH/USD"},{v:"cryLTCUSD",l:"LTC/USD"},{v:"cryXRPUSD",l:"XRP/USD"}],
-  commodity:[{v:"frxXAUUSD",l:"Gold/USD"},{v:"frxXAGUSD",l:"Silver/USD"},{v:"frxXPDUSD",l:"Palladium/USD"},{v:"OTC_BRENTOIL",l:"Brent Oil"}]
+  step:[{v:"stpRNG",l:"Step Index"}]
 };
 
-let ws=null,running=false,inTrade=false,patToken=null,acctType='real';
+let ws=null,running=false,inTrade=false,patToken=null;
 let balance=null,currentStake=0,trades=0,wins=0,pnl=0;
 let streakArr=[],digitHistory=[],consecLoss=0,contractType='DIGITUNDER';
 
-function setAcct(t){
-  acctType=t;
-  document.getElementById('btnDemo').className='acct-btn'+(t==='demo'?' active':'');
-  document.getElementById('btnReal').className='acct-btn'+(t==='real'?' active':'');
-}
-
-function doConnect(){
+async function doConnect(){
   const pat = document.getElementById('patInput').value.trim();
-  if(!pat) { alert('Please paste your PAT token.'); return; }
-  patToken = pat;
+  const acctId = document.getElementById('acctIdInput').value.trim();
   
+  if(!pat) { alert('Please paste your PAT token.'); return; }
+  if(!acctId) { alert('Please enter your Account ID.'); return; }
+  
+  patToken = pat;
   const btn = document.getElementById('connectBtn');
   btn.disabled = true; 
-  btn.textContent = 'Connecting...';
-  log('Connecting using authorized endpoint...', 'info');
+  btn.textContent = 'Authenticating...';
+  
+  log(`Requesting secure OTP stream for ${acctId}...`, 'info');
 
-  showBot();
+  try {
+    // REST Fetch to get the unique WebSocket URL
+    const response = await fetch(`https://api.derivws.com/trading/v1/options/accounts/${acctId}/otp`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${pat}`,
+        'Deriv-App-ID': APP_ID,
+        'Content-Type': 'application/json'
+      }
+    });
 
-  // Route strictly to standard WS with the official App ID as requested by Deriv support
-  const wsUrl = `wss://ws.binaryws.com/websockets/v3?app_id=${APP_ID}`;
-  connectWS(wsUrl, pat);
+    const text = await response.text();
+    
+    // Strict Error Handling based on HTTP response
+    if(!response.ok) {
+        let errMsg = `HTTP ${response.status}`;
+        try { errMsg = JSON.parse(text).error.message; } catch(e){}
+        throw new Error(errMsg);
+    }
+
+    const data = JSON.parse(text);
+    const wsUrl = data.data?.url || data.url || data.ws_url;
+    
+    if(!wsUrl) throw new Error('No valid WebSocket URL returned from Deriv.');
+
+    log('✓ Secure OTP stream generated. Connecting...', 'info');
+    showBot();
+    
+    // Pass the exact returned URL directly to the websocket connector
+    connectWS(wsUrl);
+
+  } catch(err) {
+    log(`❌ Auth Error: ${err.message}`, 'loss');
+    log('⚠ Verify your Token has "Read" & "Trade" scopes, and matches the Account ID.', 'skip');
+    btn.disabled = false;
+    btn.textContent = 'Connect Securely';
+  }
 }
 
-function connectWS(url, token){
+function connectWS(url){
   if(ws) {
     try { ws.close(); } catch(e){}
   }
@@ -269,49 +290,36 @@ function connectWS(url, token){
   ws = new WebSocket(url);
   
   ws.onopen = () => {
-    log('✓ WebSocket opened. Authenticating...', 'info');
-    ws.send(JSON.stringify({ authorize: token }));
+    log('✓ Live Trading Stream Connected!', 'win');
+    setStatus('Connected','on');
+    document.getElementById('startBtn').disabled = false;
+    document.getElementById('connectBtn').disabled = false;
+    document.getElementById('connectBtn').textContent = 'Reconnect';
+    
+    // Fetch initial balance right away
+    ws.send(JSON.stringify({ balance: 1 }));
   };
   
   ws.onmessage = (e) => {
     const msg = JSON.parse(e.data);
     
-    // Strict Scope & Error Handling
     if(msg.error){
-      if(msg.error.code === 'InvalidToken' || msg.error.code === 'AuthorizationRequired'){
-        log(`❌ Error: ${msg.error.message}`, 'loss');
-        log('⚠ Please ensure your PAT token has the "Trade" scope enabled.', 'skip');
-        setStatus('Failed — Check Scopes', '');
-        ws.close();
-        
-        const btn = document.getElementById('connectBtn');
-        btn.disabled = false;
-        btn.textContent = 'Connect to Deriv';
-        return;
-      }
       log(`API Error: ${msg.error.message}`, 'loss');
       return;
     }
-    
-    if(msg.msg_type === 'authorize'){
-      balance = msg.authorize.balance;
-      setStatus('✓ Connected: ' + msg.authorize.email, 'on');
-      log('✓ Authorized! Balance: $' + parseFloat(balance).toFixed(2), 'info');
-      updateMetrics();
-      document.getElementById('startBtn').disabled = false;
-      document.getElementById('connectBtn').disabled = false;
-      document.getElementById('connectBtn').textContent = 'Reconnect';
-    }
 
+    // Process Balance
     if(msg.msg_type === 'balance') { 
       balance = msg.balance.balance; 
       updateMetrics(); 
     }
     
+    // Process Ticks
     if(msg.msg_type === 'tick' && running) { 
       onTick(msg.tick.quote); 
     }
     
+    // Process Contract Closure
     if(msg.msg_type === 'proposal_open_contract') {
       const c = msg.proposal_open_contract;
       if(c.is_expired || c.is_sold) onTradeResult(parseFloat(c.profit), c.balance_after);
@@ -319,10 +327,10 @@ function connectWS(url, token){
   };
   
   ws.onerror = () => { 
-    log('Network error. Rate limit or connection dropped.', 'loss'); 
+    log('❌ Stream connection dropped.', 'loss'); 
     setStatus('Network Error', '');
     document.getElementById('connectBtn').disabled = false;
-    document.getElementById('connectBtn').textContent = 'Retry';
+    document.getElementById('connectBtn').textContent = 'Reconnect Securely';
   };
   
   ws.onclose = (e) => { 
@@ -370,7 +378,7 @@ function placeTrade(){
   const sym=document.getElementById('symbol').value, ticks=parseInt(document.getElementById('ticks').value), barrier=document.getElementById('barrier').value;
   const params={buy:1,price:currentStake,parameters:{amount:currentStake,basis:'stake',contract_type:contractType,currency:'USD',duration:ticks,duration_unit:'t',symbol:sym},subscribe:1};
   if(['DIGITUNDER','DIGITOVER','DIGITMATCH','DIGITDIFF'].includes(contractType)) params.parameters.barrier=barrier;
-  log('Trade: '+contractType+(barrier?' '+barrier:'')+' | $'+currentStake.toFixed(2),'info');
+  log('Executing: '+contractType+(barrier?' '+barrier:'')+' | $'+currentStake.toFixed(2),'info');
   ws.send(JSON.stringify(params));
   ws.send(JSON.stringify({balance:1,subscribe:1}));
 }
@@ -391,23 +399,27 @@ function meetsFor(d,b,ct){
   if(ct==='DIGITEVEN') return d%2===0; if(ct==='DIGITODD') return d%2!==0;
   return false;
 }
+
 function updateCond(){
   const b=parseInt(document.getElementById('barrier').value), valid=[],skip=[];
   for(let d=0;d<=9;d++){ if(meetsFor(d,b,contractType)) valid.push(d); else skip.push(d); }
-  const rules={DIGITUNDER:`Enter ONLY when digit < ${b} → stops when ≥ ${b}`,DIGITOVER:`Enter ONLY when digit > ${b} → stops when ≤ ${b}`,DIGITMATCH:`Enter ONLY when digit = ${b}`,DIGITDIFF:`Enter ONLY when digit ≠ ${b}`,DIGITEVEN:'Enter ONLY on EVEN digits (0,2,4,6,8)',DIGITODD:'Enter ONLY on ODD digits (1,3,5,7,9)'};
+  const rules={DIGITUNDER:`Enter ONLY when digit < ${b}`,DIGITOVER:`Enter ONLY when digit > ${b}`,DIGITMATCH:`Enter ONLY when digit = ${b}`,DIGITDIFF:`Enter ONLY when digit ≠ ${b}`,DIGITEVEN:'Enter ONLY on EVEN digits',DIGITODD:'Enter ONLY on ODD digits'};
   document.getElementById('condBox').innerHTML=`<span class="rule">${rules[contractType]}</span><br><span class="valid">✓ TRADE: ${valid.join(', ')||'none'}</span><br><span class="skiptxt">✗ SKIP: ${skip.join(', ')||'none'}</span>`;
 }
+
 function setCT(t){
   contractType=t;
   ['DIGITUNDER','DIGITOVER','DIGITMATCH','DIGITEVEN','DIGITODD','DIGITDIFF'].forEach(x=>{const el=document.getElementById('ct_'+x);if(el)el.className='ctab'+(x===t?' active':'');});
   document.getElementById('barrierRow').style.display=(t==='DIGITEVEN'||t==='DIGITODD')?'none':'';
   updateCond();
 }
+
 function setMkt(el,g){
   document.querySelectorAll('.mkt-tab').forEach(t=>t.className='mkt-tab'); el.className='mkt-tab active';
   const sel=document.getElementById('symbol'); sel.innerHTML='';
   (MARKETS[g]||[]).forEach(m=>{const o=document.createElement('option');o.value=m.v;o.textContent=m.l;sel.appendChild(o);});
 }
+
 function updatePriceDisplay(quote,digit,ok){
   const s=quote.toString(); document.getElementById('pBase').textContent=s.slice(0,-1);
   const el=document.getElementById('pDigit'); el.textContent=digit; el.className='ld '+(ok?'ok':'bad');
@@ -417,33 +429,39 @@ function updatePriceDisplay(quote,digit,ok){
   const strip=document.getElementById('strip'); strip.innerHTML='';
   digitHistory.forEach((item,i)=>{const c=document.createElement('div');c.className='dchip '+(item.ok?'ok':'bad')+(i===digitHistory.length-1?' new':'');c.textContent=item.digit;strip.appendChild(c);});
 }
+
 function log(msg,type='def'){const el=document.getElementById('log');const d=document.createElement('div');d.className='ll '+type;d.textContent=new Date().toLocaleTimeString()+' '+msg;el.appendChild(d);el.scrollTop=el.scrollHeight;}
 function setStatus(t,s=''){document.getElementById('sTxt').textContent=t;document.getElementById('sDot').className='dot '+s;}
+
 function updateMetrics(){
   if(balance!==null) document.getElementById('mBal').textContent=parseFloat(balance).toFixed(2);
   document.getElementById('mTrades').textContent=trades; document.getElementById('mWins').textContent=wins;
   const el=document.getElementById('mPnl'); el.textContent=(pnl>=0?'+':'')+pnl.toFixed(2); el.style.color=pnl>0?'#68d391':pnl<0?'#fc8181':'';
   document.getElementById('mWinRate').textContent=trades>0?Math.round(wins/trades*100)+'%':'0%';
 }
+
 function updateStreak(){
   const el=document.getElementById('streak'); document.getElementById('noRes').style.display=streakArr.length?'none':'';
   el.querySelectorAll('.sdot').forEach(e=>e.remove());
   streakArr.slice(-20).forEach(r=>{const d=document.createElement('div');d.className='sdot '+r;el.appendChild(d);});
 }
+
 function updateBtns(){document.getElementById('startBtn').disabled=running||!ws||ws.readyState!==1;document.getElementById('stopBtn').disabled=!running;}
 function showBot(){document.getElementById('loginScreen').style.display='none';document.getElementById('botScreen').style.display='block';document.getElementById('logoutBtn').style.display='block';}
-function logout(){patToken=null;if(ws)ws.close();document.getElementById('loginScreen').style.display='flex';document.getElementById('botScreen').style.display='none';document.getElementById('logoutBtn').style.display='none';document.getElementById('connectBtn').disabled=false;document.getElementById('connectBtn').textContent='Connect to Deriv';}
+function logout(){patToken=null;if(ws)ws.close();document.getElementById('loginScreen').style.display='flex';document.getElementById('botScreen').style.display='none';document.getElementById('logoutBtn').style.display='none';document.getElementById('connectBtn').disabled=false;document.getElementById('connectBtn').textContent='Connect Securely';}
+
 function startBot(){
   if(!ws||ws.readyState!==1) return;
   running=true; inTrade=false; consecLoss=0;
   currentStake=parseFloat(document.getElementById('stake').value);
   const sym=document.getElementById('symbol').value;
   setStatus('Bot running — watching digits...','run'); updateBtns();
-  log('Bot started: '+contractType+' on '+sym,'info');
+  log('Bot active: '+contractType+' on '+sym,'info');
   ws.send(JSON.stringify({ticks:sym,subscribe:1}));
   try{ws.send(JSON.stringify({action:'subscribe',channel:'ticks',symbol:sym}));}catch(e){}
 }
-function stopBot(){running=false;inTrade=false;setStatus('Stopped','on');updateBtns();document.getElementById('entryStatus').textContent='Stopped';document.getElementById('entryStatus').style.color='';log('Bot stopped.','def');}
+
+function stopBot(){running=false;inTrade=false;setStatus('Stopped','on');updateBtns();document.getElementById('entryStatus').textContent='Stopped';document.getElementById('entryStatus').style.color='';log('Bot stopped manually.','def');}
 
 setMkt(document.querySelector('.mkt-tab'),'synthetic');
 updateCond();
