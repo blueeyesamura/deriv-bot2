@@ -86,6 +86,7 @@ input:focus,select:focus{border-color:#4299e1;}
     <button class="logout-btn" id="logoutBtn" style="display:none" onclick="logout()">Logout</button>
   </div>
 
+  <!-- LOGIN -->
   <div id="loginScreen" class="login-screen">
     <div class="login-card">
       <h2>Connect Your Account</h2>
@@ -123,6 +124,7 @@ input:focus,select:focus{border-color:#4299e1;}
     </div>
   </div>
 
+  <!-- BOT -->
   <div id="botScreen" style="display:none">
     <div class="sbar"><div class="dot" id="sDot"></div><span id="sTxt" style="font-size:13px;color:#718096">Connecting...</span></div>
     <div class="metrics">
@@ -258,7 +260,7 @@ async function doConnect(){
   log('Connecting using Account ID: '+acctId,'info');
 
   try {
-    // Step 1: Get OTP using account ID directly
+    // Step 1: Get OTP using account ID directly (as per Deriv docs)
     log('Getting OTP from Deriv...','info');
     const r = await fetch(`https://api.derivws.com/trading/v1/options/accounts/${acctId}/otp`,{
       method:'POST',
@@ -317,28 +319,23 @@ function connectWS(url, pat, acctId){
 
 function connectLegacy(token){
   const urls=[
-    `wss://ws.binaryws.com/websockets/v3?app_id=${APP_ID}`,
-    `wss://ws.derivws.com/websockets/v3?app_id=${APP_ID}`,
     'wss://ws.binaryws.com/websockets/v3?app_id=1089',
-    'wss://ws.derivws.com/websockets/v3?app_id=1089'
+    'wss://ws.derivws.com/websockets/v3?app_id=1089',
+    'wss://ws.binaryws.com/websockets/v3?app_id=36544',
+    'wss://ws.derivws.com/websockets/v3?app_id=36544',
   ];
   tryLegacy(urls,0,token);
 }
 
-// FIXED: Added async/await delay to prevent VPN/Spam blocks
-async function tryLegacy(urls,i,token){
+function tryLegacy(urls,i,token){
   if(i>=urls.length){
     log('❌ All connections failed.','loss');
-    log('⚠ Network blocked. Clear cache or check connection.','skip');
-    setStatus('Failed — try VPN/Proxy','');
+    log('⚠ Try using a VPN — your ISP may be blocking Deriv.','skip');
+    setStatus('Failed — try VPN','');
     document.getElementById('connectBtn').disabled=false;
     document.getElementById('connectBtn').textContent='Retry';
     return;
   }
-  
-  // The crucial anti-spam delay
-  await new Promise(resolve => setTimeout(resolve, 2000));
-  
   if(ws){ try{ws.close();}catch(e){} }
   ws=new WebSocket(urls[i]);
   let ok=false;
