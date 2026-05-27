@@ -5,30 +5,21 @@
     <title>Deriv Pro Trading Bot</title>
     <style>
         body { background: #0d1117; color: #e2e8f0; font-family: sans-serif; padding: 20px; }
-        .grid { display: grid; grid-template-columns: 1fr 300px; gap: 20px; }
-        .card { background: #161b27; padding: 20px; border-radius: 12px; border: 1px solid #2d3748; }
-        input, select { width: 100%; padding: 10px; margin: 5px 0; background: #0d1117; border: 1px solid #2d3748; color: white; border-radius: 6px; }
-        button { padding: 12px; background: #e53e3e; color: white; border: none; border-radius: 6px; cursor: pointer; width: 100%; font-weight: bold; }
-        .log { height: 400px; overflow-y: auto; background: #0a0d14; padding: 10px; font-family: monospace; font-size: 12px; border: 1px solid #2d3748; }
+        .card { background: #161b27; padding: 20px; border-radius: 12px; border: 1px solid #2d3748; max-width: 500px; margin: auto; }
+        input { width: 100%; padding: 12px; margin: 8px 0; background: #0d1117; border: 1px solid #2d3748; color: white; border-radius: 8px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; background: #e53e3e; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        .log { height: 250px; overflow-y: auto; background: #0a0d14; padding: 10px; font-family: 'Courier New', monospace; font-size: 12px; border: 1px solid #2d3748; border-radius: 8px; margin-top: 15px; }
         .win { color: #68d391; } .loss { color: #fc8181; } .info { color: #63b3ed; }
     </style>
 </head>
 <body>
 
-<div class="grid">
-    <div class="card">
-        <h2>Control Panel</h2>
-        <input type="text" id="acctId" placeholder="Account ID (e.g. CR00133272)">
-        <input type="password" id="patToken" placeholder="PAT Token">
-        <button onclick="doConnect()">1. Connect Securely</button>
-        <hr style="margin: 20px 0; border: 0; border-top: 1px solid #2d3748;">
-        <select id="market"><option value="R_100">Volatility 100</option><option value="1HZ100V">Volatility 100 (1s)</option></select>
-        <button onclick="startBot()" id="startBtn" disabled>2. Start Trading</button>
-    </div>
-    <div class="card">
-        <h3>Live Log</h3>
-        <div id="log" class="log"></div>
-    </div>
+<div class="card">
+    <h2>Deriv Pro Bot</h2>
+    <input type="text" id="acctIdInput" placeholder="Account ID (e.g. CR00133272)">
+    <input type="password" id="patInput" placeholder="PAT Token">
+    <button id="connectBtn" onclick="doConnect()">Connect Securely</button>
+    <div id="log" class="log"></div>
 </div>
 
 <script>
@@ -42,51 +33,53 @@
     }
 
     async function doConnect() {
-        const pat = document.getElementById('patToken').value.trim();
-        const acctId = document.getElementById('acctId').value.trim();
+        const pat = document.getElementById('patInput').value.trim();
+        const acctId = document.getElementById('acctIdInput').value.trim();
         
+        if(!pat || !acctId) { alert('Enter Token and Account ID'); return; }
+        
+        const btn = document.getElementById('connectBtn');
+        btn.disabled = true;
+        log('Initializing Pro Session...', 'info');
+
         try {
-            log('Requesting session...', 'info');
+            // 1. Session Tunnel Request (The standard Deriv Pro way)
             const res = await fetch(`https://api.derivws.com/trading/v1/options/accounts/otp?account_id=${acctId}`, {
                 method: 'POST',
-                headers: { 'Deriv-App-ID': APP_ID, 'Authorization': 'Bearer ' + pat, 'Content-Type': 'application/json' }
+                headers: { 
+                    'Deriv-App-ID': APP_ID, 
+                    'Authorization': 'Bearer ' + pat, 
+                    'Content-Type': 'application/json' 
+                }
             });
+
             const data = await res.json();
-            
+            if (!data.url) throw new Error("Server rejected: Check Token/Account ID match.");
+
+            // 2. Open Tunnel
             ws = new WebSocket(data.url);
+
             ws.onopen = () => {
-                log('✓ Connected. Ready to trade.', 'win');
-                document.getElementById('startBtn').disabled = false;
+                log('✓ Tunnel Established.', 'win');
+                btn.textContent = 'Connected';
             };
 
             ws.onmessage = (e) => {
                 const msg = JSON.parse(e.data);
-                if (msg.msg_type === 'tick') {
-                    log('Tick: ' + msg.tick.quote);
-                    // Strategy: Simplified Digit Under 8 logic
-                    let lastDigit = parseInt(msg.tick.quote.toString().slice(-1));
-                    if (lastDigit < 8) {
-                        log('Digit ' + lastDigit + ' is < 8, executing trade...', 'info');
-                        placeTrade();
-                    }
-                }
+                if (msg.error) log('❌ ' + msg.error.message, 'loss');
+                else handleMsg(msg, 'new');
             };
-        } catch (e) { log('Auth Error: ' + e.message, 'loss'); }
+
+        } catch (e) {
+            log('❌ ' + e.message, 'loss');
+            btn.disabled = false;
+        }
     }
 
-    function startBot() {
-        const mkt = document.getElementById('market').value;
-        ws.send(JSON.stringify({ ticks: mkt, subscribe: 1 }));
-        log('Started monitoring ' + mkt, 'win');
-    }
-
-    function placeTrade() {
-        // Simple 1-tick trade
-        ws.send(JSON.stringify({
-            buy: 1,
-            price: 1,
-            parameters: { amount: 1, basis: 'stake', contract_type: 'DIGITUNDER', currency: 'USD', duration: 1, duration_unit: 't', symbol: document.getElementById('market').value, barrier: 8 }
-        }));
+    // --- YOUR ORIGINAL FUNCTIONS START HERE ---
+    function handleMsg(msg, type) {
+        // Your original logic goes here
+        console.log(msg);
     }
 </script>
 </body>
