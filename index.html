@@ -86,6 +86,7 @@ input:focus,select:focus{border-color:#4299e1;}
     <button class="logout-btn" id="logoutBtn" style="display:none" onclick="logout()">Logout</button>
   </div>
 
+  <!-- LOGIN -->
   <div id="loginScreen" class="login-screen">
     <div class="login-card">
       <h2>Connect Your Account</h2>
@@ -115,6 +116,7 @@ input:focus,select:focus{border-color:#4299e1;}
     </div>
   </div>
 
+  <!-- BOT -->
   <div id="botScreen" style="display:none">
     <div class="sbar"><div class="dot" id="sDot"></div><span id="sTxt" style="font-size:13px;color:#718096">Connecting...</span></div>
     <div class="metrics">
@@ -218,7 +220,9 @@ input:focus,select:focus{border-color:#4299e1;}
 </div>
 
 <script>
-const APP_ID = "33mktu5voaTJRuwLqIXZ6";
+// OFFICIAL APP ID 1089 (Deriv's default API playground ID to avoid strict CORS/Scope rejections)
+const APP_ID = "1089"; 
+
 const MARKETS={
   synthetic:[{v:"R_100",l:"Volatility 100"},{v:"R_75",l:"Volatility 75"},{v:"R_50",l:"Volatility 50"},{v:"R_25",l:"Volatility 25"},{v:"R_10",l:"Volatility 10"},{v:"1HZ100V",l:"Volatility 100 (1s)"},{v:"1HZ75V",l:"Volatility 75 (1s)"},{v:"1HZ50V",l:"Volatility 50 (1s)"},{v:"1HZ25V",l:"Volatility 25 (1s)"},{v:"1HZ10V",l:"Volatility 10 (1s)"}],
   crash:[{v:"CRASH1000",l:"Crash 1000"},{v:"CRASH500",l:"Crash 500"},{v:"CRASH300",l:"Crash 300"},{v:"BOOM1000",l:"Boom 1000"},{v:"BOOM500",l:"Boom 500"},{v:"BOOM300",l:"Boom 300"}],
@@ -239,146 +243,95 @@ function setAcct(t){
   document.getElementById('btnReal').className='acct-btn'+(t==='real'?' active':'');
 }
 
-async function doConnect(){
-  const pat=document.getElementById('patInput').value.trim();
-  const acctId=document.getElementById('acctIdInput').value.trim();
-  if(!pat){alert('Please paste your PAT token.');return;}
-  if(!acctId){alert('Please enter your Account ID.');return;}
-  patToken=pat;
-  const btn=document.getElementById('connectBtn');
-  btn.disabled=true; btn.textContent='Connecting...';
-  log('Connecting using Account ID: '+acctId,'info');
+function doConnect(){
+  const pat = document.getElementById('patInput').value.trim();
+  if(!pat) { alert('Please paste your PAT token.'); return; }
+  patToken = pat;
+  
+  const btn = document.getElementById('connectBtn');
+  btn.disabled = true; 
+  btn.textContent = 'Connecting...';
+  log('Connecting using authorized endpoint...', 'info');
 
-  try {
-    log('Getting OTP from Deriv...','info');
-    const r = await fetch(`https://api.derivws.com/trading/v1/options/accounts/${acctId}/otp`,{
-      method:'POST',
-      headers:{
-        'Authorization':'Bearer '+pat,
-        'Deriv-App-ID': APP_ID,
-        'Content-Type':'application/json'
-      }
-    });
+  showBot();
 
-    const text = await r.text();
-    log('OTP response ('+r.status+'): '+text.slice(0,120),'info');
-
-    if(!r.ok) throw new Error('OTP failed: HTTP '+r.status+' — '+text.slice(0,80));
-
-    const data = JSON.parse(text);
-    const wsUrl = data.data?.url || data.url || data.ws_url;
-    if(!wsUrl) throw new Error('No WebSocket URL returned. Response: '+text.slice(0,100));
-
-    log('✓ Got WS URL — connecting...','info');
-    showBot();
-    connectWS(wsUrl, pat, acctId);
-
-  } catch(err){
-    log('New API error: '+err.message,'loss');
-    log('Trying legacy connection...','skip');
-    showBot();
-    connectLegacy(pat);
-    btn.disabled=false;
-    btn.textContent='Connect to Deriv';
-  }
+  // Route strictly to standard WS with the official App ID as requested by Deriv support
+  const wsUrl = `wss://ws.binaryws.com/websockets/v3?app_id=${APP_ID}`;
+  connectWS(wsUrl, pat);
 }
 
-function connectWS(url, pat, acctId){
-  if(ws) ws.close();
+function connectWS(url, token){
+  if(ws) {
+    try { ws.close(); } catch(e){}
+  }
+  
   setStatus('Connecting...','wait');
   ws = new WebSocket(url);
-  ws.onopen=()=>{
-    log('✓ WebSocket connected!','info');
-    setStatus('Connected','on');
-    document.getElementById('startBtn').disabled=false;
-    document.getElementById('connectBtn').disabled=false;
-    document.getElementById('connectBtn').textContent='Reconnect';
-    ws.send(JSON.stringify({action:'get_balance'}));
-  };
-  ws.onmessage=(e)=>{
-    try{
-      const msg=JSON.parse(e.data);
-      handleMsg(msg, 'new');
-    }catch(ex){}
-  };
-  ws.onerror=()=>{ log('WS error on new API — trying legacy...','skip'); connectLegacy(pat); };
-  ws.onclose=(e)=>{ if(e.code!==1000){ setStatus('Disconnected',''); running=false; updateBtns(); }};
-}
-
-function connectLegacy(token){
-  const urls=[
-    `wss://ws.binaryws.com/websockets/v3?app_id=${APP_ID}`,
-    `wss://ws.derivws.com/websockets/v3?app_id=${APP_ID}`,
-    'wss://ws.binaryws.com/websockets/v3?app_id=1089',
-    'wss://ws.derivws.com/websockets/v3?app_id=1089'
-  ];
-  tryLegacy(urls,0,token);
-}
-
-async function tryLegacy(urls,i,token){
-  if(i>=urls.length){
-    log('❌ All connections failed.','loss');
-    log('⚠ Network blocked. Clear cache or check connection.','skip');
-    setStatus('Failed — try VPN/Proxy','');
-    document.getElementById('connectBtn').disabled=false;
-    document.getElementById('connectBtn').textContent='Retry';
-    return;
-  }
   
-  await new Promise(resolve => setTimeout(resolve, 2000));
+  ws.onopen = () => {
+    log('✓ WebSocket opened. Authenticating...', 'info');
+    ws.send(JSON.stringify({ authorize: token }));
+  };
   
-  if(ws){ try{ws.close();}catch(e){} }
-  ws=new WebSocket(urls[i]);
-  let ok=false;
-  const t=setTimeout(()=>{ if(!ok){ ws.close(); tryLegacy(urls,i+1,token); }},5000);
-  ws.onopen=()=>{ ws.send(JSON.stringify({authorize:token})); };
-  ws.onmessage=(e)=>{
-    const msg=JSON.parse(e.data);
+  ws.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    
+    // Strict Scope & Error Handling
     if(msg.error){
-      clearTimeout(t);
-      if(msg.error.code==='InvalidToken'||msg.error.code==='AuthorizationRequired'){
-        log('❌ Invalid token. Go to app.deriv.com/account/api-token and create a new one.','loss');
-        document.getElementById('connectBtn').disabled=false;
-        document.getElementById('connectBtn').textContent='Connect to Deriv';
-        ws.close(); return;
+      if(msg.error.code === 'InvalidToken' || msg.error.code === 'AuthorizationRequired'){
+        log(`❌ Error: ${msg.error.message}`, 'loss');
+        log('⚠ Please ensure your PAT token has the "Trade" scope enabled.', 'skip');
+        setStatus('Failed — Check Scopes', '');
+        ws.close();
+        
+        const btn = document.getElementById('connectBtn');
+        btn.disabled = false;
+        btn.textContent = 'Connect to Deriv';
+        return;
       }
-      tryLegacy(urls,i+1,token); return;
+      log(`API Error: ${msg.error.message}`, 'loss');
+      return;
     }
-    if(msg.msg_type==='authorize'){
-      clearTimeout(t); ok=true;
-      balance=msg.authorize.balance;
-      setStatus('✓ Connected: '+msg.authorize.email,'on');
-      log('✓ Authorized! Balance: $'+parseFloat(balance).toFixed(2),'info');
+    
+    if(msg.msg_type === 'authorize'){
+      balance = msg.authorize.balance;
+      setStatus('✓ Connected: ' + msg.authorize.email, 'on');
+      log('✓ Authorized! Balance: $' + parseFloat(balance).toFixed(2), 'info');
       updateMetrics();
-      document.getElementById('startBtn').disabled=false;
-      document.getElementById('connectBtn').disabled=false;
-      document.getElementById('connectBtn').textContent='Reconnect';
-      ws.onmessage=(e)=>{ try{ handleMsg(JSON.parse(e.data),'legacy'); }catch(ex){} };
+      document.getElementById('startBtn').disabled = false;
+      document.getElementById('connectBtn').disabled = false;
+      document.getElementById('connectBtn').textContent = 'Reconnect';
+    }
+
+    if(msg.msg_type === 'balance') { 
+      balance = msg.balance.balance; 
+      updateMetrics(); 
+    }
+    
+    if(msg.msg_type === 'tick' && running) { 
+      onTick(msg.tick.quote); 
+    }
+    
+    if(msg.msg_type === 'proposal_open_contract') {
+      const c = msg.proposal_open_contract;
+      if(c.is_expired || c.is_sold) onTradeResult(parseFloat(c.profit), c.balance_after);
     }
   };
-  ws.onerror=()=>{ clearTimeout(t); tryLegacy(urls,i+1,token); };
-  ws.onclose=(e)=>{ clearTimeout(t); if(!ok) tryLegacy(urls,i+1,token); else{ setStatus('Disconnected',''); running=false; updateBtns(); }};
-}
-
-function handleMsg(msg, api){
-  if(api==='new'){
-    if(msg.balance!==undefined){ balance=msg.balance; setStatus('✓ Connected | $'+parseFloat(balance).toFixed(2),'on'); updateMetrics(); }
-    if((msg.type==='tick'||msg.channel==='ticks')&&running){
-      const q=msg.data?.quote||msg.data?.price||msg.quote;
-      if(q) onTick(q);
+  
+  ws.onerror = () => { 
+    log('Network error. Rate limit or connection dropped.', 'loss'); 
+    setStatus('Network Error', '');
+    document.getElementById('connectBtn').disabled = false;
+    document.getElementById('connectBtn').textContent = 'Retry';
+  };
+  
+  ws.onclose = (e) => { 
+    if(e.code !== 1000) { 
+      setStatus('Disconnected', ''); 
+      running = false; 
+      updateBtns(); 
     }
-    if(msg.type==='trade'||msg.channel==='trade'){
-      const d=msg.data||msg;
-      if(d.profit!==undefined) onTradeResult(parseFloat(d.profit),d.balance_after);
-    }
-  } else {
-    if(msg.msg_type==='balance'){ balance=msg.balance.balance; updateMetrics(); }
-    if(msg.msg_type==='tick'&&running){ onTick(msg.tick.quote); }
-    if(msg.msg_type==='proposal_open_contract'){
-      const c=msg.proposal_open_contract;
-      if(c.is_expired||c.is_sold) onTradeResult(parseFloat(c.profit),c.balance_after);
-    }
-  }
+  };
 }
 
 function onTick(quote){
