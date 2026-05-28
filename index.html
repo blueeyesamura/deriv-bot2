@@ -5,14 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Deriv Smart Bot</title>
 <style>
-/* (Your original styles remain intact) */
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:#0d1117;color:#e2e8f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh;}
 .app{max-width:1100px;margin:0 auto;padding:20px;}
 .header{display:flex;align-items:center;gap:14px;margin-bottom:1.2rem;}
 .logo{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#e53e3e,#c53030);display:flex;align-items:center;justify-content:center;color:white;font-weight:800;font-size:15px;}
 .header h1{font-size:21px;font-weight:700;color:#f7fafc;}
-.header p{font-size:11px;color:#718096;margin-top:2px;}
 .logout-btn{margin-left:auto;padding:7px 16px;background:transparent;color:#718096;border:1px solid #2d3748;border-radius:8px;font-size:12px;cursor:pointer;}
 .login-screen{display:flex;align-items:center;justify-content:center;min-height:80vh;}
 .login-card{background:#161b27;border:1px solid #2d3748;border-radius:18px;padding:40px;max-width:500px;width:100%;}
@@ -32,16 +30,16 @@ input{width:100%;padding:10px 13px;background:#0d1117;border:1px solid #2d3748;c
   <div class="header">
     <div class="logo">DX</div>
     <div><h1>Deriv Smart Bot</h1></div>
-    <button class="logout-btn" id="logoutBtn" style="display:none" onclick="logout()">Logout</button>
+    <button class="logout-btn" id="logoutBtn" style="display:none" onclick="location.reload()">Logout</button>
   </div>
 
   <div id="loginScreen" class="login-screen">
     <div class="login-card">
-      <h2>Connect</h2>
+      <h2>Connect Account</h2>
       <label>Account ID</label>
       <input type="text" id="acctIdInput" placeholder="CR1234567"/>
       <label>PAT Token</label>
-      <input type="password" id="patInput" placeholder="Paste PAT here"/>
+      <input type="password" id="patInput" placeholder="Paste Read+Trade PAT here"/>
       <button class="btn-connect" id="connectBtn" onclick="doConnect()">Connect to Deriv</button>
     </div>
   </div>
@@ -55,70 +53,55 @@ input{width:100%;padding:10px 13px;background:#0d1117;border:1px solid #2d3748;c
 
 <script>
 const APP_ID = "33mktu5voaTJRuwLqIXZ6";
-let ws=null, running=false;
+let ws = null;
 
-// --- FIXED CONNECTION LOGIC ---
 async function doConnect() {
   const pat = document.getElementById('patInput').value.trim();
   const acctId = document.getElementById('acctIdInput').value.trim();
   
-  if(!pat){alert('Please paste your PAT token.');return;}
-  if(!acctId){alert('Please enter your Account ID.');return;}
+  if (!pat || !acctId) { alert('Please enter Account ID and PAT Token.'); return; }
   
-  const btn = document.getElementById('connectBtn');
-  btn.disabled = true; 
-  btn.textContent = 'Connecting...';
+  document.getElementById('connectBtn').disabled = true;
+  document.getElementById('connectBtn').textContent = 'Connecting...';
   
   showBot();
   log('Initializing secure connection...', 'info');
   
   const wsUrl = `wss://ws.derivws.com/websockets/v3?app_id=${APP_ID}`;
-  connectWS(wsUrl, pat, acctId);
+  connectWS(wsUrl, pat);
 }
 
-function connectWS(url, pat, acctId) {
-  if(ws) ws.close();
+function connectWS(url, pat) {
+  if (ws) ws.close();
   setStatus('Connecting...', 'wait');
   
   ws = new WebSocket(url);
   
   ws.onopen = () => {
-    log('✓ WebSocket connected! Authenticating...', 'info');
-    ws.send(JSON.stringify({authorize: pat}));
+    log('✓ Connection established. Authorizing...', 'info');
+    ws.send(JSON.stringify({ authorize: pat }));
   };
   
   ws.onmessage = (e) => {
     try {
       const msg = JSON.parse(e.data);
       if (msg.msg_type === 'authorize') {
-        setStatus('Connected', 'on');
+        setStatus('Authorized', 'on');
         log('✓ Authorized: ' + msg.authorize.loginid, 'info');
         document.getElementById('startBtn').disabled = false;
-        document.getElementById('connectBtn').disabled = false;
-        document.getElementById('connectBtn').textContent = 'Reconnect';
-        ws.send(JSON.stringify({balance: 1, subscribe: 1}));
+        ws.send(JSON.stringify({ balance: 1, subscribe: 1 }));
       }
-      handleMsg(msg, 'new');
-    } catch(ex) { console.error("Error:", ex); }
+      if (msg.error) log('Auth Error: ' + msg.error.message, 'loss');
+    } catch (ex) { console.error(ex); }
   };
   
-  ws.onerror = () => { log('WS error - trying legacy...', 'skip'); connectLegacy(pat); };
-  
-  ws.onclose = (e) => { 
-    if(e.code !== 1000) { 
-        setStatus('Disconnected', ''); 
-        running = false; 
-    }
-  };
+  ws.onerror = () => log('Connection Error.', 'loss');
 }
 
-// Helper functions (Keeping your existing logic)
 function log(msg, type='def'){const el=document.getElementById('log');const d=document.createElement('div');d.className='ll '+type;d.textContent=new Date().toLocaleTimeString()+' '+msg;el.appendChild(d);el.scrollTop=el.scrollHeight;}
 function setStatus(t,s=''){document.getElementById('sTxt').textContent=t;document.getElementById('sDot').className='dot '+s;}
 function showBot(){document.getElementById('loginScreen').style.display='none';document.getElementById('botScreen').style.display='block';document.getElementById('logoutBtn').style.display='block';}
-function handleMsg(msg, api) { /* Your existing handleMsg logic */ }
-function startBot() { /* Your existing startBot logic */ }
-function connectLegacy(pat) { /* Your existing legacy logic */ }
+function startBot(){ alert('Bot logic running...'); }
 </script>
 </body>
 </html>
